@@ -184,9 +184,61 @@ class Pipeline:
             self.emit({"type": "report", "path": str(rp)})
             self._log(f"报告已生成：{rp}")
             self.register_report(rp)
+            # Webshell 生成（全流程最后一步）
+            self.run_webshell()
             self._log("===== 一键全流程完成 =====")
         except Exception as e:
             self._log(f"全流程出错：{e}\n{traceback.format_exc()}", "error")
+
+    # ---------- 6. Webshell 生成（全流程最后一步）----------
+    def run_webshell(self):
+        """根据漏洞挖掘结果，自动生成对应类型的 Webshell"""
+        from src.webshell.manager import default_manager
+        mgr = default_manager()
+        self._log("[*] Webshell 自动生成阶段...")
+        
+        # 分析漏洞类型，决定生成什么类型的 webshell
+        shell_types_needed = set()
+        for f in self.findings:
+            ftype = (f.get("type") or "").lower()
+            url = (f.get("url") or "").lower()
+            # Java 相关漏洞 -> jsp
+            if any(k in ftype for k in ["java", "shiro", "weblogic", "struts", "spring", "jndi", "反序列化"]):
+                shell_types_needed.add("jsp")
+            # PHP 相关
+            if any(k in ftype for k in ["php", "thinkphp", "wordpress"]):
+                shell_types_needed.add("php")
+            # .NET 相关
+            if any(k in ftype for k in ["asp", "aspx", ".net", "iis"]):
+                shell_types_needed.add("aspx")
+            # 通用 web 漏洞
+            if any(k in ftype for k in ["文件上传", "upload", "源码泄露"]):
+                # 根据 URL 后缀判断
+                if ".php" in url:
+                    shell_types_needed.add("php")
+                elif ".jsp" in url or ".jspx" in url:
+                    shell_types_needed.add("jsp")
+                elif ".asp" in url or ".aspx" in url:
+                    shell_types_needed.add("aspx")
+        
+        # 默认至少生成 jsp
+        if not shell_types_needed:
+            shell_types_needed.add("jsp")
+        
+        generated = []
+        for stype in shell_types_needed:
+            ok, msg, path = mgr.generate_shell(stype)
+            if ok and path:
+                generated.append(path)
+                self._log(f"    [+] 生成 {stype} webshell: {path}", "ok")
+            else:
+                self._log(f"    [-] {stype} webshell 生成失败: {msg}", "warn")
+        
+        if generated:
+            self._log(f"[*] 共生成 {len(generated)} 个 Webshell，存放于 outputs/webshells/")
+            self.emit({"type": "webshell_generated", "count": len(generated), "paths": generated})
+        else:
+            self._log("[*] 未生成 Webshell（无匹配漏洞或生成失败）")
 
 
 # =====================================================================
@@ -852,6 +904,7 @@ class EduSrcGUI:
                 return
             pipe.run_reverify()
             pipe.run_report()
+            pipe.run_webshell()
             self._post_event({"type": "state", "stage": "全流程", "running": False})
         except Exception as e:
             self._post_event({"type": "log", "msg": f"全流程异常：{e}", "kind": "error"})
@@ -907,6 +960,13 @@ class EduSrcGUI:
             self._refresh_report_tab()
         elif t == "report_registered":
             self._refresh_report_tab()
+        elif t == "webshell_generated":
+            count = ev.get("count", 0)
+            paths = ev.get("paths", [])
+            self._append_log(f"[Webshell] 生成 {count} 个 Webshell", "ok")
+            for p in paths:
+                self._append_log(f"  -> {p}", "info")
+            self._ws_refresh()
 
     # ---------------- 表格填充 ----------------
     def _fill_subs(self, data):
