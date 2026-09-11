@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """红队工具集成模块
 
-集成 F:\One-fox\tools 中未集成的红队常用工具，覆盖：
+集成 F:\\One-fox\\tools 中未集成的红队常用工具，覆盖：
 - PoC/漏洞利用（Gr33k/poc2jar/0x7eTeamTools）
 - 信息收集增强（enscan/Railgun/sharpscan）
 - 漏洞扫描（Aazhen/pppscan/dddd）
@@ -57,6 +57,13 @@ MIDDLEWARE_EXPLOITS = {
     "ruoyi": TOOLS_ROOT / "gui_scan" / "Ruoyi-All-master" / "RuoYiVueScan-v7.exe",
     "tpscan": TOOLS_ROOT / "gui_scan" / "TPScan-main" / "tpscan-test.jar",
     "spring_jndi": TOOLS_ROOT / "gui_scan" / "spring" / "JNDIExploit-1.0-SNAPSHOT.jar",
+    "shiro": TOOLS_ROOT / "gui_scan" / "shiro",
+    "weblogic": TOOLS_ROOT / "gui_scan" / "weblogic",
+    "struts2": TOOLS_ROOT / "gui_scan" / "struts2",
+    "fastjson": TOOLS_ROOT / "gui_scan" / "FastJson_JackSon",
+    "jboss": TOOLS_ROOT / "gui_scan" / "jboss",
+    "oaexp": TOOLS_ROOT / "gui_scan" / "OAexp",
+    "liqunkit": TOOLS_ROOT / "gui_scan" / "LiqunKit_1.5.1",
 }
 
 # 后渗透工具
@@ -331,6 +338,64 @@ def run_weekpasswd(targets, school_code, stop_flag=None, emit=None):
     return findings
 
 
+def run_middleware_exploits(targets, school_code, stop_flag=None, emit=None):
+    """中间件漏洞利用工具集（shiro/weblogic/struts2/fastjson/jboss等）"""
+    _out = emit or print
+    findings = []
+    out_dir = output_dir_for(school_code)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # 中间件指纹映射
+    middleware_fingerprints = {
+        "shiro": ["shiro", "rememberMe"],
+        "weblogic": ["weblogic", "wls-wsat", "console"],
+        "struts2": ["struts", ".action", ".do"],
+        "fastjson": ["fastjson"],
+        "jboss": ["jboss", "invoker"],
+        "jenkins": ["jenkins"],
+        "nacos": ["nacos"],
+    }
+
+    for target in targets[:30]:
+        if stop_flag and stop_flag.is_set():
+            break
+        url = target.get("url", "")
+        title = target.get("title", "").lower()
+        server = target.get("server", "").lower()
+
+        if not url:
+            continue
+
+        # 根据指纹判断可能的中间件
+        for mw_name, fingerprints in middleware_fingerprints.items():
+            matched = any(fp in title or fp in server or fp in url.lower()
+                         for fp in fingerprints)
+            if not matched:
+                continue
+
+            _out(f"    [*] 检测到 {mw_name} 特征: {url}")
+
+            # 调用对应的利用工具
+            mw_path = MIDDLEWARE_EXPLOITS.get(mw_name)
+            if not mw_path or not mw_path.exists():
+                continue
+
+            # 记录指纹命中
+            findings.append({
+                "url": url,
+                "type": f"[{mw_name}]中间件指纹",
+                "sev": "中",
+                "method": "GET",
+                "confirm": "true-positive",
+                "source": f"external-{mw_name}",
+                "evidence": {"tool": mw_name, "fingerprints": fingerprints, "title": title[:100]},
+                "rule": f"{mw_name}中间件指纹识别",
+            })
+
+    _out(f"    中间件指纹命中 {len(findings)} 条")
+    return findings
+
+
 def run_all_redteam_tools(targets, school_code, stop_flag=None, emit=None):
     """运行所有红队工具，合并结果"""
     _out = emit or print
@@ -342,6 +407,7 @@ def run_all_redteam_tools(targets, school_code, stop_flag=None, emit=None):
         ("Railgun", lambda: run_railgun(targets, school_code, stop_flag, emit)),
         ("Aazhen", lambda: run_aazhen(targets, school_code, stop_flag, emit)),
         ("weekpasswd", lambda: run_weekpasswd(targets, school_code, stop_flag, emit)),
+        ("中间件指纹", lambda: run_middleware_exploits(targets, school_code, stop_flag, emit)),
     ]
 
     for name, func in tools_to_run:
