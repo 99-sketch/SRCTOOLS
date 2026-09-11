@@ -4,8 +4,8 @@
 
 from pathlib import Path
 
-# 使用当前目录作为项目根（不硬编码本地路径）
-PROJECT_ROOT = Path(__file__).resolve().parent
+# 使用当前工作目录作为项目根（不硬编码本地路径）
+PROJECT_ROOT = Path.cwd()
 
 a = Analysis(
     [str(PROJECT_ROOT / "gui_app.py")],
