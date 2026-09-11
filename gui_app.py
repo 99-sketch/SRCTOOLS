@@ -290,6 +290,7 @@ class EduSrcGUI:
         self._build_nday_tab()
         self._build_log_tab()
         self._build_report_tab()
+        self._build_webshell_tab()
 
     # ---- 资产标签页 ----
     def _build_assets_tab(self):
@@ -495,6 +496,247 @@ class EduSrcGUI:
         REPORT_MGR.delete(r.get("id"))
         self._refresh_report_tab()
         self._append_log("报告缓存已删除。", "ok")
+
+    # ---- Webshell 管理标签页 ----
+    def _build_webshell_tab(self):
+        tab = ttk.Frame(self.notebook)
+        self.notebook.add(tab, text=" Webshell管理 ")
+
+        # 顶部工具栏
+        toolbar = ttk.Frame(tab, padding=4)
+        toolbar.pack(fill="x")
+        ttk.Button(toolbar, text="➕ 新增连接", command=self._ws_add).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="✏️ 编辑", command=self._ws_edit).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="🗑 删除", command=self._ws_delete).pack(side="left", padx=2)
+        ttk.Separator(toolbar, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Button(toolbar, text="🚀 启动管理器", command=self._ws_launch).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="🔄 刷新", command=self._ws_refresh).pack(side="left", padx=2)
+        ttk.Separator(toolbar, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Button(toolbar, text="🛠 生成Webshell", command=self._ws_generate).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="📂 打开Webshell目录", command=self._ws_open_dir).pack(side="left", padx=2)
+
+        # 连接列表
+        list_frame = ttk.Frame(tab)
+        list_frame.pack(fill="both", expand=True, padx=4, pady=4)
+
+        columns = ("name", "url", "type", "manager", "password", "created", "last_used")
+        self.tree_ws = ttk.Treeview(list_frame, columns=columns, show="headings", height=12)
+        self.tree_ws.heading("name", text="名称")
+        self.tree_ws.heading("url", text="URL")
+        self.tree_ws.heading("type", text="类型")
+        self.tree_ws.heading("manager", text="管理器")
+        self.tree_ws.heading("password", text="密码")
+        self.tree_ws.heading("created", text="创建时间")
+        self.tree_ws.heading("last_used", text="最近使用")
+        for col in columns:
+            self.tree_ws.column(col, width=120 if col != "url" else 250)
+
+        sb = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree_ws.yview)
+        self.tree_ws.configure(yscrollcommand=sb.set)
+        self.tree_ws.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+
+        self.tree_ws.bind("<Double-1>", lambda e: self._ws_launch())
+
+        # 状态栏
+        self.ws_status = ttk.Label(tab, text="就绪", foreground="#888")
+        self.ws_status.pack(anchor="w", padx=6, pady=2)
+
+        # 初始化 webshell 管理器
+        from src.webshell.manager import default_manager
+        self.ws_mgr = default_manager()
+        self._ws_refresh()
+
+    def _ws_refresh(self):
+        """刷新 Webshell 连接列表"""
+        self.tree_ws.delete(*self.tree_ws.get_children())
+        for c in self.ws_mgr.list():
+            self.tree_ws.insert("", "end", iid=c.name, values=(
+                c.name, c.url, c.shell_type, c.manager,
+                c.password, c.created, c.last_used
+            ))
+        self.ws_status.config(text=f"共 {len(self.ws_mgr.list())} 个连接")
+
+    def _ws_add(self):
+        """新增 Webshell 连接"""
+        dlg = tk.Toplevel(self.root)
+        dlg.title("新增 Webshell 连接")
+        dlg.geometry("500x400")
+        dlg.transient(self.root)
+        dlg.grab_set()
+
+        fields = {}
+        row = 0
+        for label, key, default in [
+            ("名称:", "name", ""),
+            ("URL:", "url", "http://"),
+            ("密码:", "password", ""),
+            ("密钥:", "secret_key", ""),
+            ("类型:", "shell_type", "jsp"),
+            ("管理器:", "manager", "godzilla"),
+            ("备注:", "notes", ""),
+        ]:
+            ttk.Label(dlg, text=label).grid(row=row, column=0, sticky="e", padx=8, pady=4)
+            if key in ("shell_type", "manager"):
+                var = tk.StringVar(value=default)
+                cb = ttk.Combobox(dlg, textvariable=var, state="readonly", width=20)
+                if key == "shell_type":
+                    cb["values"] = ("jsp", "jspx", "php", "asp", "aspx")
+                else:
+                    cb["values"] = ("godzilla", "behinder", "behinder4", "antsword", "tianxi", "ether_ghost")
+                cb.grid(row=row, column=1, sticky="w", padx=8, pady=4)
+                fields[key] = var
+            else:
+                entry = ttk.Entry(dlg, width=40)
+                entry.insert(0, default)
+                entry.grid(row=row, column=1, sticky="w", padx=8, pady=4)
+                fields[key] = entry
+            row += 1
+
+        def save():
+            from src.webshell.manager import WebshellConnection
+            vals = {}
+            for k, v in fields.items():
+                if isinstance(v, tk.StringVar):
+                    vals[k] = v.get()
+                else:
+                    vals[k] = v.get()
+            if not vals.get("name") or not vals.get("url"):
+                messagebox.showerror("错误", "名称和URL不能为空")
+                return
+            conn = WebshellConnection(**vals)
+            self.ws_mgr.add(conn)
+            self._ws_refresh()
+            self._append_log(f"已添加 Webshell 连接: {vals['name']}", "ok")
+            dlg.destroy()
+
+        ttk.Button(dlg, text="保存", command=save).grid(row=row, column=0, columnspan=2, pady=10)
+
+    def _ws_edit(self):
+        """编辑 Webshell 连接"""
+        sel = self.tree_ws.selection()
+        if not sel:
+            messagebox.showinfo("提示", "请先选择一个连接")
+            return
+        name = sel[0]
+        conn = self.ws_mgr.get(name)
+        if not conn:
+            return
+
+        dlg = tk.Toplevel(self.root)
+        dlg.title(f"编辑连接: {name}")
+        dlg.geometry("500x400")
+        dlg.transient(self.root)
+        dlg.grab_set()
+
+        fields = {}
+        row = 0
+        for label, key in [
+            ("名称:", "name"),
+            ("URL:", "url"),
+            ("密码:", "password"),
+            ("密钥:", "secret_key"),
+            ("类型:", "shell_type"),
+            ("管理器:", "manager"),
+            ("备注:", "notes"),
+        ]:
+            ttk.Label(dlg, text=label).grid(row=row, column=0, sticky="e", padx=8, pady=4)
+            val = getattr(conn, key, "")
+            if key in ("shell_type", "manager"):
+                var = tk.StringVar(value=val)
+                cb = ttk.Combobox(dlg, textvariable=var, state="readonly", width=20)
+                if key == "shell_type":
+                    cb["values"] = ("jsp", "jspx", "php", "asp", "aspx")
+                else:
+                    cb["values"] = ("godzilla", "behinder", "behinder4", "antsword", "tianxi", "ether_ghost")
+                cb.grid(row=row, column=1, sticky="w", padx=8, pady=4)
+                fields[key] = var
+            else:
+                entry = ttk.Entry(dlg, width=40)
+                entry.insert(0, val)
+                entry.grid(row=row, column=1, sticky="w", padx=8, pady=4)
+                fields[key] = entry
+            row += 1
+
+        def save():
+            vals = {}
+            for k, v in fields.items():
+                if isinstance(v, tk.StringVar):
+                    vals[k] = v.get()
+                else:
+                    vals[k] = v.get()
+            old_name = name
+            new_name = vals.pop("name", old_name)
+            self.ws_mgr.remove(old_name)
+            from src.webshell.manager import WebshellConnection
+            conn_new = WebshellConnection(name=new_name, **vals)
+            self.ws_mgr.add(conn_new)
+            self._ws_refresh()
+            self._append_log(f"已更新 Webshell 连接: {new_name}", "ok")
+            dlg.destroy()
+
+        ttk.Button(dlg, text="保存", command=save).grid(row=row, column=0, columnspan=2, pady=10)
+
+    def _ws_delete(self):
+        """删除 Webshell 连接"""
+        sel = self.tree_ws.selection()
+        if not sel:
+            messagebox.showinfo("提示", "请先选择一个连接")
+            return
+        name = sel[0]
+        if messagebox.askyesno("确认删除", f"确定删除连接「{name}」？"):
+            self.ws_mgr.remove(name)
+            self._ws_refresh()
+            self._append_log(f"已删除 Webshell 连接: {name}", "ok")
+
+    def _ws_launch(self):
+        """启动 Webshell 管理器"""
+        sel = self.tree_ws.selection()
+        if not sel:
+            messagebox.showinfo("提示", "请先选择一个连接")
+            return
+        name = sel[0]
+        conn = self.ws_mgr.get(name)
+        if not conn:
+            return
+        ok, msg = self.ws_mgr.launch_manager(conn)
+        if ok:
+            self._append_log(msg, "ok")
+            self._ws_refresh()
+        else:
+            messagebox.showerror("启动失败", msg)
+
+    def _ws_generate(self):
+        """生成 Webshell"""
+        dlg = tk.Toplevel(self.root)
+        dlg.title("生成 Webshell")
+        dlg.geometry("400x200")
+        dlg.transient(self.root)
+        dlg.grab_set()
+
+        ttk.Label(dlg, text="选择 Webshell 类型:").pack(pady=10)
+        shell_type = tk.StringVar(value="jsp")
+        cb = ttk.Combobox(dlg, textvariable=shell_type, state="readonly", width=20)
+        cb["values"] = ("jsp", "jspx", "php", "asp", "aspx")
+        cb.pack(pady=5)
+
+        def generate():
+            ok, msg, path = self.ws_mgr.generate_shell(shell_type.get())
+            if ok:
+                messagebox.showinfo("生成成功", f"{msg}\n\n路径: {path}")
+                self._append_log(f"Webshell 生成成功: {path}", "ok")
+            else:
+                messagebox.showerror("生成失败", msg)
+            dlg.destroy()
+
+        ttk.Button(dlg, text="生成", command=generate).pack(pady=20)
+
+    def _ws_open_dir(self):
+        """打开 Webshell 输出目录"""
+        from src.config import OUTPUTS_DIR
+        ws_dir = OUTPUTS_DIR / "webshells"
+        ws_dir.mkdir(parents=True, exist_ok=True)
+        os.startfile(str(ws_dir))
 
     # ---------------- 交互逻辑 ----------------
     def _append_log(self, msg, kind="info"):

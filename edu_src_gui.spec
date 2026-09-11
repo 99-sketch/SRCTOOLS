@@ -32,6 +32,8 @@ a = Analysis(
         "src.reverify",
         "src.report.generator",
         "src.report.manager",
+        "src.webshell",
+        "src.webshell.manager",
         "pandas",
         "pyarrow",
         # tkinter 相关
