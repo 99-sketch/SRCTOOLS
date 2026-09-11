@@ -95,10 +95,14 @@ UTILS = {
 
 
 def _run(cmd, timeout=120):
-    """执行命令，返回 (returncode, stdout, stderr)"""
+    """静默执行命令（不打开窗口），返回 (returncode, stdout, stderr)"""
     try:
+        flags = 0
+        if sys.platform == "win32":
+            flags = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
-                                encoding="utf-8", errors="ignore")
+                                encoding="utf-8", errors="ignore",
+                                creationflags=flags)
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return -1, "", "timeout"
