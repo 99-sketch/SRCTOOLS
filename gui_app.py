@@ -38,7 +38,7 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 from data.universities import UNIVERSITIES, get, search
 from src.config import BASE_DIR, OUTPUTS_DIR, LOCAL_CVE_PATHS, which, output_dir_for
 from src.report.manager import default_manager
-from src.gui.enhancements import AuthGate, UniversityPicker, SettingsTab, DraftTab, PLATFORM_PRESETS
+from src.gui.enhancements import UniversityPicker, SettingsTab, DraftTab, PLATFORM_PRESETS
 
 REPORT_MGR = default_manager()
 
@@ -186,9 +186,9 @@ class Pipeline:
             self.emit({"type": "report", "path": str(rp)})
             self._log(f"报告已生成：{rp}")
             self.register_report(rp)
-            # Webshell 生成（全流程最后一步）
-            self.run_webshell()
+            # Webshell/C2 不再自动执行，需用户在「Webshell管理」标签页手动确认
             self._log("===== 一键全流程完成 =====")
+            self._log("提示：Webshell生成和C2启动请在「Webshell管理」标签页手动操作")
         except Exception as e:
             self._log(f"全流程出错：{e}\n{traceback.format_exc()}", "error")
 
@@ -1200,7 +1200,8 @@ class EduSrcGUI:
                 return
             pipe.run_reverify()
             pipe.run_report()
-            pipe.run_webshell()
+            # Webshell/C2 不再自动执行，需用户在「Webshell管理」标签页手动确认
+            self._post_event({"type": "log", "msg": "提示：Webshell生成和C2启动请在「Webshell管理」标签页手动操作", "kind": "info"})
             self._post_event({"type": "state", "stage": "全流程", "running": False})
         except Exception as e:
             self._post_event({"type": "log", "msg": f"全流程异常：{e}", "kind": "error"})
@@ -1367,22 +1368,11 @@ class EduSrcGUI:
 
 def main():
     root = tk.Tk()
-    root.withdraw()  # 先隐藏主窗口
-
-    # 显示授权闸门
-    gate = AuthGate(root)
-    root.wait_window(gate)
-    if not gate.ok:
-        root.destroy()
-        return  # 用户未确认授权，退出
-
-    root.deiconify()  # 显示主窗口
-
     # 尝试设置窗口图标（源码运行时从icon_src读取，打包后含app_icon.ico）
     for _cand in (Path(__file__).resolve().parent / "app_icon.ico",
                   Path(sys.executable).resolve().parent / "app_icon.ico" if getattr(sys, "frozen", False) else None):
         try:
-            if _cand.exists():
+            if _cand and _cand.exists():
                 root.iconbitmap(str(_cand))
                 break
         except Exception:

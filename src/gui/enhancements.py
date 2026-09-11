@@ -237,7 +237,9 @@ class SettingsTab(ttk.Frame):
 
     def _save_settings(self):
         settings = self.get_settings()
-        settings_file = Path("outputs/settings.json")
+        # 使用绝对路径，避免exe运行时CWD问题
+        from src.config import OUTPUTS_DIR
+        settings_file = OUTPUTS_DIR / "settings.json"
         settings_file.parent.mkdir(parents=True, exist_ok=True)
         settings_file.write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
         messagebox.showinfo("完成", "设置已保存。")
@@ -304,7 +306,8 @@ class DraftTab(ttk.Frame):
 
         # 生成草稿
         drafts = []
-        out_dir = Path("outputs/drafts")
+        from src.config import OUTPUTS_DIR
+        out_dir = OUTPUTS_DIR / "drafts"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         for f in findings:
