@@ -36,6 +36,8 @@ a = Analysis(
         "src.report.manager",
         "src.webshell",
         "src.webshell.manager",
+        "src.gui",
+        "src.gui.enhancements",
         "pandas",
         "pyarrow",
         # tkinter 相关
@@ -43,6 +45,7 @@ a = Analysis(
         "tkinter.ttk",
         "tkinter.messagebox",
         "tkinter.filedialog",
+        "tkinter.scrolledtext",
     ],
     hookspath=[],
     hooksconfig={},

@@ -24,7 +24,7 @@ if sys.platform == "win32":
 
 # 固定把项目根加入搜索路径（源码与exe(frozen)均适用）
 if getattr(sys, "frozen", False):
-    _RUN_ROOT = Path(r"e:\trae自动化\edu-src-toolkit")
+    _RUN_ROOT = Path(r"D:\SRC执行器")
 else:
     _RUN_ROOT = Path(__file__).resolve().parent
 for _p in (str(_RUN_ROOT), str(_RUN_ROOT / "src")):
@@ -38,6 +38,7 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 from data.universities import UNIVERSITIES, get, search
 from src.config import BASE_DIR, OUTPUTS_DIR, LOCAL_CVE_PATHS, which, output_dir_for
 from src.report.manager import default_manager
+from src.gui.enhancements import AuthGate, UniversityPicker, SettingsTab, DraftTab, PLATFORM_PRESETS
 
 REPORT_MGR = default_manager()
 
@@ -305,6 +306,8 @@ class EduSrcGUI:
         self.school_search.bind("<Return>", lambda e: self._do_search())
         ttk.Button(tool, text="搜索", command=self._do_search).pack(side="left", padx=2)
         ttk.Button(tool, text="全列表", command=self._show_all_schools).pack(side="left", padx=2)
+        ttk.Button(tool, text="高校清单", command=self._pick_university,
+                   style="Accent.TButton").pack(side="left", padx=2)
 
         self.school_box = ttk.Combobox(tool, width=34, font=("Microsoft YaHei UI", 10), state="readonly")
         self.school_box.pack(side="left", padx=6)
@@ -344,6 +347,8 @@ class EduSrcGUI:
         self._build_log_tab()
         self._build_report_tab()
         self._build_webshell_tab()
+        self._build_settings_tab()
+        self._build_draft_tab()
 
     # ---- 资产标签页 ----
     def _build_assets_tab(self):
@@ -1315,12 +1320,60 @@ class EduSrcGUI:
             self.pipeline.stop()
         self.root.destroy()
 
+    # ---- 设置标签页 ----
+    def _build_settings_tab(self):
+        self.settings_tab = SettingsTab(self.notebook, self)
+        self.notebook.add(self.settings_tab, text=" 设置 ")
+
+    # ---- 上报草稿标签页 ----
+    def _build_draft_tab(self):
+        self.draft_tab = DraftTab(self.notebook, self)
+        self.notebook.add(self.draft_tab, text=" 上报草稿 ")
+
+    # ---- 高校清单选择器 ----
+    def _pick_university(self):
+        """从内置EDUSRC高校清单中选择目标。"""
+        def on_select(selected_unis):
+            for u in selected_unis:
+                # 添加到学校列表
+                school = {
+                    "name": u.get("name", ""),
+                    "code": u.get("domain", "").replace(".", "_").replace("-", "_"),
+                    "domains": [u.get("domain", "")],
+                    "authorized": False,
+                }
+                # 检查是否已存在
+                exists = False
+                for s in self.school_list:
+                    if s.get("code") == school["code"]:
+                        exists = True
+                        break
+                if not exists:
+                    self.school_list.append(school)
+            self._refresh_school_box()
+            self._append_log(f"已加入 {len(selected_unis)} 所高校，请逐项确认授权后再运行评估。", "ok")
+
+        dlg = UniversityPicker(self.root, UNIVERSITIES, on_select)
+        dlg.transient(self.root)
+        dlg.grab_set()
+
 
 def main():
     root = tk.Tk()
+    root.withdraw()  # 先隐藏主窗口
+
+    # 显示授权闸门
+    gate = AuthGate(root)
+    root.wait_window(gate)
+    if not gate.ok:
+        root.destroy()
+        return  # 用户未确认授权，退出
+
+    root.deiconify()  # 显示主窗口
+
     # 尝试设置窗口图标（源码运行时从icon_src读取，打包后含app_icon.ico）
     for _cand in (Path(__file__).resolve().parent / "app_icon.ico",
-                  Path(r"e:\trae自动化\edu-src-toolkit\app_icon.ico")):
+                  Path(r"D:\SRC执行器\app_icon.ico")):
         try:
             if _cand.exists():
                 root.iconbitmap(str(_cand))
