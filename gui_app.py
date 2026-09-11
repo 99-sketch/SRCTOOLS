@@ -24,7 +24,7 @@ if sys.platform == "win32":
 
 # 固定把项目根加入搜索路径（源码与exe(frozen)均适用）
 if getattr(sys, "frozen", False):
-    _RUN_ROOT = Path(r"D:\SRC执行器")
+    _RUN_ROOT = Path(sys.executable).resolve().parent
 else:
     _RUN_ROOT = Path(__file__).resolve().parent
 for _p in (str(_RUN_ROOT), str(_RUN_ROOT / "src")):
@@ -491,7 +491,7 @@ class EduSrcGUI:
                     r.get("title", ""), r.get("school", ""),
                     r.get("created", ""), r.get("confirmed", 0), p))
             self.report_status_label.config(text=f"已缓存报告：{len(path_set)} 份  (缓存目录: "
-                                                 f"e:\\trae自动化\\edu-src-toolkit\\outputs\\reports)")
+                                                 f"outputs\\reports)")
         except Exception as e:
             self.report_status_label.config(text=f"刷新失败：{e}")
 
@@ -1373,7 +1373,7 @@ def main():
 
     # 尝试设置窗口图标（源码运行时从icon_src读取，打包后含app_icon.ico）
     for _cand in (Path(__file__).resolve().parent / "app_icon.ico",
-                  Path(r"D:\SRC执行器\app_icon.ico")):
+                  Path(sys.executable).resolve().parent / "app_icon.ico" if getattr(sys, "frozen", False) else None):
         try:
             if _cand.exists():
                 root.iconbitmap(str(_cand))

@@ -157,7 +157,7 @@ def probe_assets(subdomains, school_code, concurrency=30, stop_flag=None, emit=N
 if __name__ == "__main__":
     import sys as _s
     subdomains = []
-    p = Path(r"e:\trae自动化\edu-src-toolkit\outputs\zju\subdomains.txt")
+    p = Path("outputs/zju/subdomains.txt")
     if p.exists():
         subdomains = [l.strip() for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
     res = probe_assets(subdomains, "zju")

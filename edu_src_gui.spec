@@ -4,7 +4,8 @@
 
 from pathlib import Path
 
-PROJECT_ROOT = Path(r"D:\SRC执行器")
+# 使用当前目录作为项目根（不硬编码本地路径）
+PROJECT_ROOT = Path(__file__).resolve().parent
 
 a = Analysis(
     [str(PROJECT_ROOT / "gui_app.py")],

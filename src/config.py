@@ -6,30 +6,30 @@ import json
 import sys
 from pathlib import Path
 
-# ============ 工作区根目录（E盘，红线约定，绝不写C盘） ============
+# ============ 工作区根目录（不硬编码本地路径） ============
 # 兼容三种运行模式：
-#  - 源码运行：脚本所在目录 = e:\trae自动化\edu-src-toolkit
+#  - 源码运行：脚本所在目录
 #  - exe (onedir) 运行：exe所在目录
 #  - exe (onefile)运行：exe所在目录（内核解压到临时区，base仍指向exe旁）
 if getattr(sys, "frozen", False):
-    # PyInstaller 打包环境：单文件，输出固定到 E 盘开发目录（结果集中、便于对接D盘库）
-    _ROOT_CANDIDATE = Path(r"e:\trae自动化\edu-src-toolkit")
+    # PyInstaller 打包环境：使用exe所在目录
+    _ROOT_CANDIDATE = Path(sys.executable).resolve().parent
 else:
     _ROOT_CANDIDATE = Path(__file__).resolve().parent.parent
 
-# 红线：exe/脚本若位于 C 盘，强制输出回退到 E 盘开发目录
+# 红线：exe/脚本若位于 C 盘，强制输出回退到 D 盘
 def _is_on_c(candidate: Path) -> bool:
     try:
         return candidate.drive.lower() == "c:" or (len(candidate.parts) and candidate.parts[0].lower().startswith("c"))
     except Exception:
         return False
 
-_E_DEV = Path(r"e:\trae自动化\edu-src-toolkit")
+_D_DEV = Path(r"D:\SRC执行器")
 
 def _safe_base(candidate: Path) -> Path:
-    """返回输出根目录：优先exe/脚本所在目录(非C盘)，否则退回E盘固定目录"""
+    """返回输出根目录：优先exe/脚本所在目录(非C盘)，否则退回D盘固定目录"""
     if (_is_on_c(candidate) or not candidate.exists()):
-        return _E_DEV
+        return _D_DEV
     return candidate
 
 BASE_DIR = _safe_base(_ROOT_CANDIDATE)

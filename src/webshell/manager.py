@@ -14,8 +14,8 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
-# 工具路径
-TOOLS_ROOT = Path(r"F:\One-fox\tools")
+# 工具路径（可通过环境变量 TOOLS_ROOT 覆盖）
+TOOLS_ROOT = Path(os.environ.get("TOOLS_ROOT", r"F:\One-fox\tools"))
 WEBSHELL_DIR = TOOLS_ROOT / "gui_webshell"
 WEBSHELL_GEN = TOOLS_ROOT / "gui_other" / "webshellsc" / "Webshell_Generate-1.2.4.jar"
 

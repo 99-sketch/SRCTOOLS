@@ -17,8 +17,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.config import output_dir_for
 
-# 工具根目录（可配置，若不存在则自动跳过该项）
-TOOLS_ROOT = Path(r"F:\One-fox\tools")
+# 工具根目录（可通过环境变量 TOOLS_ROOT 覆盖，若不存在则自动跳过该项）
+TOOLS_ROOT = Path(os.environ.get("TOOLS_ROOT", r"F:\One-fox\tools"))
 
 # 各工具的可执行文件：名称 -> 相对 TOOLS_ROOT 的路径
 TOOL_PATHS = {

@@ -48,14 +48,14 @@
 - 底部进度条与阶段状态，**■停止** 可随时中止
 
 > - 单文件，双击即用。全程图形化，无需命令行。
-> - 结果固定写 `e:\trae自动化\edu-src-toolkit\outputs\`（E盘，绝不写C盘）。
+> - 结果固定写 `outputs\` 目录（不写C盘）。
 > - 报告生成后自动登记进「报告管理」，可随时查看/打开/删除。
 
 ### B. 源码版（开发用）
 
 ```powershell
 # 图形界面版（源码运行）
-E:\python3.14.6\python.exe gui_app.py
+python gui_app.py
 
 # 命令行版（可选）
 python run.py                    # 交互选校 + 全流程
@@ -67,20 +67,19 @@ python run.py --search 广东      # 搜索
 ### C. 重新打包 exe
 
 ```powershell
-E:\python3.14.6\python.exe -m pip install pyinstaller
-cd e:\trae自动化\edu-src-toolkit
-E:\python3.14.6\python.exe -m PyInstaller --noconfirm edu_src_gui.spec
+pip install pyinstaller
+python -m PyInstaller --noconfirm edu_src_gui.spec
 # 图形界面单文件产物在 dist\教育SRC挖洞工具.exe
 ```
 
-## 三、本地漏洞库对接（D盘）
+## 三、本地漏洞库对接
 
-工具自动读取你的两个库：
+工具自动读取你的漏洞库：
 
 | 库 | 路径 | 用途 |
 |----|------|------|
-| 批量CVE/CNVD | `D:\CVE`（含 `CNVD\cnvd.parquet`） | Web指纹 → Nday候选匹配 |
-| PoC源码库 | `D:\漏洞库\exploitarium` | 漏洞类型 → 本地检测脚本关联 |
+| 批量CVE/CNVD | `CVE\`（含 `CNVD\cnvd.parquet`） | Web指纹 → Nday候选匹配 |
+| PoC源码库 | `漏洞库\exploitarium` | 漏洞类型 → 本地检测脚本关联 |
 
 **parquet 依赖**（读取CNVD全量库需要）：
 ```powershell
@@ -90,7 +89,7 @@ pip install pyarrow pandas
 
 ## 四、外部工具（可选加速）
 
-工具会自动探测并调用 `F:\One-fox\tools`（或 PATH）下已安装的扫描器，
+工具会自动探测并调用已安装的扫描器（可通过环境变量 `TOOLS_ROOT` 配置路径），
 覆盖全部渗透手法，任一工具缺失/异常自动降级、不中断全流程：
 
 | 工具 | 用途 |
@@ -103,7 +102,7 @@ pip install pyarrow pandas
 | `httpx` | 探活/指纹 |
 | `sqlmap` | SQL注入深度自动验证（离线增强） |
 
-> 工具根目录默认 `F:\One-fox\tools`，可改 `src/recon/tooling.py` 的 `TOOLS_ROOT`。
+> 工具根目录可通过环境变量 `TOOLS_ROOT` 配置，默认 `tools\`。
 
 ## 五、目录结构
 
@@ -142,7 +141,7 @@ edu-src-toolkit/
 
 ## 六、注意事项
 
-1. **红线**：所有输出只在 E 盘 `outputs/` 下，不写 C 盘。
+1. **红线**：所有输出只在 `outputs/` 下，不写 C 盘。
 2. 复测与敏感探测均为**无害识别**，不含破坏性利用。
 3. Nday候选仅作**线索提示**，需人工核对真实版本与授权范围后再决定是否验证。
 4. 报告生成后会在「报告管理」中自动缓存，**删除仅移除缓存副本**，不影响原始报告；上报前请人工审核。

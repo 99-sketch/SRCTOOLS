@@ -177,7 +177,7 @@ def main():
         else:
             print("\n(仅资产收集模式)")
 
-    print(f"\n{'='*60}\n  全部完成，结果输出目录: e:\\trae自动化\\edu-src-toolkit\\outputs\\\n{'='*60}")
+    print(f"\n{'='*60}\n  全部完成，结果输出目录: outputs\\\n{'='*60}")
 
 
 if __name__ == "__main__":

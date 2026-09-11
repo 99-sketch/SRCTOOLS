@@ -12,6 +12,7 @@
 """
 
 import sys
+import os
 import json
 import subprocess
 from pathlib import Path
@@ -19,8 +20,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.config import output_dir_for
 
-# 工具路径
-TOOLS_ROOT = Path(r"F:\One-fox\tools")
+# 工具路径（可通过环境变量 TOOLS_ROOT 覆盖）
+TOOLS_ROOT = Path(os.environ.get("TOOLS_ROOT", r"F:\One-fox\tools"))
 
 # PoC/漏洞利用工具
 POC_TOOLS = {
