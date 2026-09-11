@@ -22,6 +22,7 @@ TOOLS_ROOT = Path(r"F:\One-fox\tools")
 
 # 各工具的可执行文件：名称 -> 相对 TOOLS_ROOT 的路径
 TOOL_PATHS = {
+    # ===== 核心扫描器（已集成）=====
     "nuclei":   r"gui_scan\nuclei\nuclei.exe",
     "afrog":    r"gui_other\afrog\afrog.exe",
     "ehole":    r"gui_scan\dirsearch\ehole\ehole.exe",
@@ -33,6 +34,56 @@ TOOL_PATHS = {
     "oneforall": r"gui_shouji\oneforall\oneforall.py",
     "httpx":    r"gui_scan\fcke\httpx.exe",
     "sqlmap":   r"gui_scan\sqlmap-master\sqlmap.py",
+    
+    # ===== 信息收集增强 =====
+    "tscanplus": r"gui_scan\tscanplus\TscanPlus_Win_Amd64.exe",
+    "xscan":    r"gui_scan\xscan\xscan.exe",
+    "kscan":    r"gui_other\kscan\kscan_windows_amd64.exe",
+    "railgun":  r"gui_other\gorailgun\Railgun.exe",
+    "massdns":  r"gui_shouji\oneforall\thirdparty\massdns\windows\x64\massdns.exe",
+    "fine":     r"gui_shouji\fine\Fine_windows_amd64.exe",
+    "golin":    r"gui_shouji\golin\golin.exe",
+    "goon":     r"gui_shouji\goon\goon3_win_amd64.exe",
+    
+    # ===== 中间件/框架漏洞验证（Nday利用）=====
+    "shiro_attack": r"gui_scan\shiro\shiro\shiro_attack-4.7.0-SNAPSHOT-all.jar",
+    "shiro_poc": r"gui_scan\shiro\shiro_attack2\Pyke-Shiro_0.3.jar",
+    "jndi_exploit": r"gui_other\JNDIE2.5\JNDI-Injection-Exploit-Plus-2.5-SNAPSHOT-all.jar",
+    "ysoserial": r"gui_scan\yso\ysoserial.jar",
+    "weblogic_tool": r"gui_scan\weblogic\WeblogicTool_1.3.jar",
+    "thinkphp_gui": r"gui_scan\thinkphp\ThinkphpGUI.jar",
+    "struts2": r"gui_scan\struts2\struts2_19.jar",
+    "nacos_exploit": r"gui_scan\nacos\NacosExploit-1.0.1-SNAPSHOT-jar-with-dependencies.jar",
+    "jenkins_exploit": r"gui_scan\jenkins\JenkinsExploit-GUI-1.3-SNAPSHOT.jar",
+    "xxljob_tool": r"gui_scan\xxljob\XXL-JOB漏洞综合利用工具_1.5.jar",
+    "jeecg_exploit": r"gui_scan\jeecg\jeecgExploitss.jar",
+    "ruoyi_scan": r"gui_scan\Ruoyi-All-master\ruoyitools\RuoYiVueScan-v7.exe",
+    "redis_rogue": r"gui_scan\redis-rogue-server\redis.exe",
+    "postgre_util": r"gui_scan\postgre\postgreUtil-1.0-SNAPSHOT-jar-with-dependencies.jar",
+    "hikvision": r"gui_scan\hikvision\hikvision.exe",
+    "vcenter_kit": r"gui_other\vcenterKit\VcenterKit.py",
+    
+    # ===== Web漏洞专项 =====
+    "supersql": r"gui_scan\supersql\SuperSQLInjection.exe",
+    "weekoa": r"gui_scan\OAexp\weekoa.exe",
+    "jdump_spider": r"gui_scan\heapdump\JDumpSpiderGUI-1.0-SNAPSHOT-full.jar",
+    "webcrack": r"gui_scan\WebCrack-master\2024-03-14-0.1.2-win-x64.exe",
+    "decrypt_tools": r"gui_scan\decrypt\DecryptToolsV3.0.jar",
+    "mitan": r"gui_scan\mitan\mitan-jar-with-dependencies.jar",
+    "weekpasswd": r"gui_scan\weekpasswd\JUBILANT-WOLF-V2.0.1.exe",
+    "json_exp": r"gui_scan\json\JsonExp.exe",
+    "vue_scan": r"gui_scan\vuescan\vue_scan.exe",
+    "heartsk": r"gui_scan\heartsk\HeartsK.exe",
+    "aazhen": r"gui_scan\Aazhen-v3.1-main\Aazhen_Scanner_V3.1.exe",
+    "api_tool": r"gui_scan\apitool\API-T00L_v1.2.jar",
+    "aksk_tool": r"gui_scan\aksk\aksktool.jar",
+    "docker_api": r"gui_scan\docker\DockerAPITool_v0.1.jar",
+    
+    # ===== 目录/敏感文件扫描 =====
+    "dirscan": r"gui_shouji\dirscan_3.0\scandir-3.0.jar",
+    "yuji": r"gui_shouji\yjdirscanv1.1\御剑2.exe",
+    "bjx": r"gui_shouji\bjx11\bjx.exe",
+    "polarscan": r"gui_shouji\bjx11\Polarscan.exe",
 }
 
 
@@ -273,6 +324,41 @@ def run_external_scanners(alive_results, school_code, do_finger=True,
         except Exception as e:
             _out(f"    [跳过] xray 异常: {e}")
 
+    # TscanPlus 综合信息收集
+    if not (stop_flag and stop_flag.is_set()):
+        try:
+            findings += run_tscanplus(alive_results, school_code, stop_flag, emit=emit)
+        except Exception as e:
+            _out(f"    [跳过] TscanPlus 异常: {e}")
+
+    # kscan 资产收集增强
+    if not (stop_flag and stop_flag.is_set()):
+        try:
+            findings += run_kscan(alive_results, school_code, stop_flag, emit=emit)
+        except Exception as e:
+            _out(f"    [跳过] kscan 异常: {e}")
+
+    # WebCrack Webpack源码泄露检测
+    if not (stop_flag and stop_flag.is_set()):
+        try:
+            findings += run_webcrack(alive_results, school_code, stop_flag, emit=emit)
+        except Exception as e:
+            _out(f"    [跳过] WebCrack 异常: {e}")
+
+    # JDumpSpider HeapDump敏感信息检测
+    if not (stop_flag and stop_flag.is_set()):
+        try:
+            findings += run_jdump_spider(alive_results, school_code, stop_flag, emit=emit)
+        except Exception as e:
+            _out(f"    [跳过] JDumpSpider 异常: {e}")
+
+    # dirscan 目录扫描
+    if not (stop_flag and stop_flag.is_set()):
+        try:
+            findings += run_dirscan(alive_results, school_code, stop_flag, emit=emit)
+        except Exception as e:
+            _out(f"    [跳过] dirscan 异常: {e}")
+
     _out(f"    外部扫描器共合并 {len(findings)} 条证据漏洞")
     return findings
 
@@ -332,4 +418,215 @@ def run_xray(alive_results, school_code, stop_flag=None, emit=None):
             "rule": f"xray综合扫描命中 {vtype}",
         })
     _out(f"    xray 命中 {len(findings)} 条证据漏洞")
+    return findings
+
+
+# ================= TscanPlus（综合信息收集）=================
+def run_tscanplus(alive_results, school_code, stop_flag=None, emit=None):
+    """调用 TscanPlus 做综合信息收集（端口/服务/指纹/弱口令）。"""
+    _out = emit or print
+    exe = tool_path("tscanplus")
+    if not exe:
+        _out("    [跳过] 未找到 TscanPlus")
+        return []
+    targets, urls = _write_targets(alive_results, school_code)
+    out_dir = output_dir_for(school_code)
+    _out("[*] 调用 TscanPlus 综合信息收集...")
+    cmd = [exe, "-f", str(targets), "-o", str(out_dir / "scanner" / "tscanplus_result.txt")]
+    rc, so, se = _run(cmd, timeout=300)
+    _out(f"    TscanPlus 退出码 {rc}")
+    # 解析输出（TscanPlus 输出格式为文本，每行一个结果）
+    findings = []
+    result_file = out_dir / "scanner" / "tscanplus_result.txt"
+    if result_file.exists():
+        try:
+            for line in result_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                # 格式: ip:port service title
+                parts = line.split()
+                if len(parts) >= 2:
+                    findings.append({
+                        "url": f"http://{parts[0]}",
+                        "type": f"[TscanPlus]{parts[1] if len(parts)>1 else '服务'}",
+                        "sev": "提示",
+                        "method": "GET",
+                        "confirm": "true-positive",
+                        "source": "external-tscanplus",
+                        "evidence": {"tool": "tscanplus", "raw": line[:200]},
+                        "rule": "TscanPlus信息收集",
+                    })
+        except Exception as e:
+            _out(f"    TscanPlus 输出解析失败: {e}")
+    _out(f"    TscanPlus 收集 {len(findings)} 条资产信息")
+    return findings
+
+
+# ================= WebCrack（Webpack源码泄露扫描）=================
+def run_webcrack(alive_results, school_code, stop_flag=None, emit=None):
+    """调用 WebCrack 检测 Webpack 源码泄露。"""
+    _out = emit or print
+    exe = tool_path("webcrack")
+    if not exe:
+        _out("    [跳过] 未找到 WebCrack")
+        return []
+    findings = []
+    out_dir = output_dir_for(school_code)
+    for r in alive_results[:20]:  # 限制数量避免过长
+        if stop_flag and stop_flag.is_set():
+            break
+        url = r.get("url", "")
+        if not url:
+            continue
+        _out(f"    [*] WebCrack 检测: {url}")
+        cmd = [exe, url, "-o", str(out_dir / "scanner" / "webcrack")]
+        rc, so, se = _run(cmd, timeout=60)
+        # WebCrack 输出到 stdout，检测是否有泄露
+        if "found" in so.lower() or "webpack" in so.lower():
+            findings.append({
+                "url": url,
+                "type": "Webpack源码泄露",
+                "sev": "中",
+                "method": "GET",
+                "confirm": "true-positive",
+                "source": "external-webcrack",
+                "evidence": {"tool": "webcrack", "output": so[:500]},
+                "rule": "WebCrack检测到Webpack源码泄露",
+            })
+    _out(f"    WebCrack 命中 {len(findings)} 条源码泄露")
+    return findings
+
+
+# ================= JDumpSpider（HeapDump敏感信息提取）=================
+def run_jdump_spider(alive_results, school_code, stop_flag=None, emit=None):
+    """检测并提取 HeapDump 文件中的敏感信息。"""
+    _out = emit or print
+    findings = []
+    # 先检测常见的 heapdump 路径
+    heapdump_paths = ["/actuator/heapdump", "/heapdump", "/heapdump.json", "/api/heapdump"]
+    for r in alive_results[:30]:
+        if stop_flag and stop_flag.is_set():
+            break
+        base_url = r.get("url", "").rstrip("/")
+        if not base_url:
+            continue
+        for path in heapdump_paths:
+            url = base_url + path
+            try:
+                import requests
+                resp = requests.get(url, timeout=10, verify=False, allow_redirects=False)
+                if resp.status_code == 200 and len(resp.content) > 10000:
+                    # 检测到 heapdump 文件
+                    findings.append({
+                        "url": url,
+                        "type": "HeapDump敏感信息泄露",
+                        "sev": "严重",
+                        "method": "GET",
+                        "confirm": "true-positive",
+                        "source": "external-jdump",
+                        "evidence": {
+                            "tool": "jdump_spider",
+                            "size": len(resp.content),
+                            "verification": f"HeapDump文件存在，大小{len(resp.content)}字节",
+                        },
+                        "rule": "HeapDump文件可访问且体积较大，疑似敏感信息泄露",
+                    })
+                    _out(f"    [!] 发现 HeapDump: {url} ({len(resp.content)} bytes)")
+            except Exception:
+                pass
+    _out(f"    JDumpSpider 命中 {len(findings)} 条 HeapDump 泄露")
+    return findings
+
+
+# ================= 目录扫描（dirscan）=================
+def run_dirscan(alive_results, school_code, stop_flag=None, emit=None):
+    """调用 dirscan 做目录扫描，发现隐藏路径。"""
+    _out = emit or print
+    exe = tool_path("dirscan")
+    if not exe:
+        _out("    [跳过] 未找到 dirscan")
+        return []
+    findings = []
+    out_dir = output_dir_for(school_code)
+    # 取前5个目标做目录扫描
+    for r in alive_results[:5]:
+        if stop_flag and stop_flag.is_set():
+            break
+        url = r.get("url", "")
+        if not url:
+            continue
+        _out(f"    [*] dirscan 扫描: {url}")
+        out_file = out_dir / "scanner" / f"dirscan_{r.get('host','unknown')}.txt"
+        cmd = ["java", "-jar", exe, url, "-o", str(out_file)]
+        rc, so, se = _run(cmd, timeout=120)
+        # 解析输出
+        if out_file.exists():
+            try:
+                for line in out_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    # 格式: 200 /path
+                    parts = line.split(None, 1)
+                    if len(parts) == 2 and parts[0].isdigit():
+                        status = int(parts[0])
+                        path = parts[1]
+                        if status == 200 and not path.endswith((".js", ".css", ".png", ".jpg", ".gif")):
+                            findings.append({
+                                "url": url.rstrip("/") + path,
+                                "type": f"[dirscan]{path}",
+                                "sev": "提示",
+                                "method": "GET",
+                                "confirm": "true-positive",
+                                "source": "external-dirscan",
+                                "evidence": {"tool": "dirscan", "status": status, "path": path},
+                                "rule": f"目录扫描发现 {path}",
+                            })
+            except Exception as e:
+                _out(f"    dirscan 输出解析失败: {e}")
+    _out(f"    dirscan 发现 {len(findings)} 个隐藏路径")
+    return findings
+
+
+# ================= kscan（资产收集增强）=================
+def run_kscan(alive_results, school_code, stop_flag=None, emit=None):
+    """调用 kscan 做资产收集（端口/服务/指纹）。"""
+    _out = emit or print
+    exe = tool_path("kscan")
+    if not exe:
+        _out("    [跳过] 未找到 kscan")
+        return []
+    # 提取主机列表
+    hosts = list(set(r.get("host", "") for r in alive_results if r.get("host")))
+    if not hosts:
+        return []
+    out_dir = output_dir_for(school_code)
+    out_file = out_dir / "scanner" / "kscan_result.txt"
+    _out(f"[*] 调用 kscan 扫描 {len(hosts)} 个主机...")
+    cmd = [exe, "-i", ",".join(hosts[:50]), "-o", str(out_file)]  # 限制50个主机
+    rc, so, se = _run(cmd, timeout=300)
+    _out(f"    kscan 退出码 {rc}")
+    findings = []
+    if out_file.exists():
+        try:
+            for line in out_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                # 解析 kscan 输出
+                if "open" in line.lower() or ":" in line:
+                    findings.append({
+                        "url": line.split()[0] if line.split() else line,
+                        "type": f"[kscan]{line[:50]}",
+                        "sev": "提示",
+                        "method": "GET",
+                        "confirm": "true-positive",
+                        "source": "external-kscan",
+                        "evidence": {"tool": "kscan", "raw": line[:200]},
+                        "rule": "kscan资产收集",
+                    })
+        except Exception as e:
+            _out(f"    kscan 输出解析失败: {e}")
+    _out(f"    kscan 收集 {len(findings)} 条资产信息")
     return findings
