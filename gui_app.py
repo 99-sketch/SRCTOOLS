@@ -1334,24 +1334,31 @@ class EduSrcGUI:
     def _pick_university(self):
         """从内置EDUSRC高校清单中选择目标。"""
         def on_select(selected_unis):
+            # 将选中的高校添加到搜索框的候选列表
+            if not selected_unis:
+                return
+            
+            # 更新搜索框的候选列表
+            current_cands = getattr(self.school_box, "_cands", [])
             for u in selected_unis:
-                # 添加到学校列表
-                school = {
-                    "name": u.get("name", ""),
-                    "code": u.get("domain", "").replace(".", "_").replace("-", "_"),
-                    "domains": [u.get("domain", "")],
-                    "authorized": False,
-                }
                 # 检查是否已存在
                 exists = False
-                for s in self.school_list:
-                    if s.get("code") == school["code"]:
+                for c in current_cands:
+                    if c.get("code") == u.get("code"):
                         exists = True
                         break
                 if not exists:
-                    self.school_list.append(school)
-            self._refresh_school_box()
-            self._append_log(f"已加入 {len(selected_unis)} 所高校，请逐项确认授权后再运行评估。", "ok")
+                    current_cands.append(u)
+            
+            self.school_box._cands = current_cands
+            self.school_box["values"] = [f"{c['name']} ({c['code']})" for c in current_cands]
+            
+            # 自动选中第一个
+            if current_cands:
+                self.school_box.current(0)
+                self._select_school()
+            
+            self._append_log(f"已加入 {len(selected_unis)} 所高校到候选列表，请逐项确认授权后再运行评估。", "ok")
 
         dlg = UniversityPicker(self.root, UNIVERSITIES, on_select)
         dlg.transient(self.root)

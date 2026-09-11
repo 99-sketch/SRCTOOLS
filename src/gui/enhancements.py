@@ -91,9 +91,7 @@ class UniversityPicker(tk.Toplevel):
         tk.Label(srow, text="搜索：", font=("Microsoft YaHei", 9)).pack(side=tk.LEFT)
         self.kw = tk.StringVar()
         tk.Entry(srow, textvariable=self.kw, width=24, font=("Microsoft YaHei", 9)).pack(side=tk.LEFT, padx=4)
-        self.only_edu = tk.BooleanVar(value=True)
-        tk.Checkbutton(srow, text="仅显示EDUSRC收录高校", variable=self.only_edu,
-                       font=("Microsoft YaHei", 9)).pack(side=tk.LEFT, padx=8)
+        tk.Label(srow, text="（输入校名/拼音/域名搜索）", fg="#888", font=("Microsoft YaHei", 8)).pack(side=tk.LEFT, padx=4)
 
         # 列表区域（带滚动条）
         body = tk.Frame(self)
@@ -108,7 +106,6 @@ class UniversityPicker(tk.Toplevel):
 
         # 绑定搜索
         self.kw.trace_add("write", self._rebuild)
-        self.only_edu.trace_add("write", self._rebuild)
         self._rebuild()
 
         # 底部按钮
@@ -128,13 +125,19 @@ class UniversityPicker(tk.Toplevel):
         q = self.kw.get().strip().lower()
         shown = 0
         for u in self.universities:
-            if self.only_edu.get() and not u.get("edu_src"):
+            # 适配 UNIVERSITIES 数据格式：name/code/domains
+            name = u.get("name", "")
+            code = u.get("code", "")
+            domains = u.get("domains", [])
+            domain = domains[0] if domains else ""
+            
+            # 搜索过滤
+            if q and q not in (name + code + domain).lower():
                 continue
-            if q and q not in (u.get("name", "") + u.get("domain", "")).lower():
-                continue
+            
             v = tk.BooleanVar()
-            self.checks[u["domain"]] = (v, u)
-            txt = f'{u.get("name","")}  ({u.get("domain","")})  [{u.get("region","")}]'
+            self.checks[code] = (v, u)
+            txt = f'{name}  ({domain})  [{code}]'
             tk.Checkbutton(self.inner, text=txt, variable=v, anchor="w",
                            font=("Microsoft YaHei", 9)).pack(fill=tk.X, anchor="w")
             shown += 1
