@@ -29,6 +29,16 @@ MANAGERS = {
     "ether_ghost": WEBSHELL_DIR / "yh" / "ether_ghost_v0.2.0.exe",
 }
 
+# C2 框架路径
+C2_FRAMEWORKS = {
+    "cobaltstrike": WEBSHELL_DIR.parent / "gui_other" / "Cobalt_Strike_4.7" / "cobaltstrike.jar",
+    "cobaltstrike_client": WEBSHELL_DIR.parent / "gui_other" / "Cobalt_Strike_4.7" / "cobaltstrike-client.jar",
+    "dogcs": WEBSHELL_DIR.parent / "gui_other" / "dogcs_v2.1" / "TeamServer64.exe",
+    "xiebro_c2": WEBSHELL_DIR.parent / "gui_other" / "dogcs_v2.1" / "XieBroC2.exe",
+    "counter_strike": WEBSHELL_DIR.parent / "gui_other" / "Counter-Strike" / "TeamServer.jar",
+    "cs_client": WEBSHELL_DIR.parent / "gui_other" / "Counter-Strike" / "cs.jar",
+}
+
 # Webshell 类型与对应管理器映射
 SHELL_TYPE_MAP = {
     "jsp": ["godzilla", "behinder", "behinder4"],
@@ -219,6 +229,53 @@ def default_manager():
         _m = WebshellManager()
         default_manager._m = _m
     return _m
+
+
+def launch_c2(c2_name: str, teamserver_host: str = "0.0.0.0", teamserver_port: int = 50050,
+              password: str = "123456", extra_args: str = ""):
+    """启动 C2 框架
+
+    c2_name: cobaltstrike / dogcs / xiebro_c2 / counter_strike
+    teamserver_host: TeamServer 监听地址
+    teamserver_port: TeamServer 监听端口
+    password: TeamServer 密码
+    extra_args: 额外参数
+    """
+    jar_path = C2_FRAMEWORKS.get(c2_name)
+    if not jar_path or not jar_path.exists():
+        return False, f"未找到 C2 框架: {c2_name} ({jar_path})"
+
+    try:
+        if jar_path.suffix == ".jar":
+            # Java C2 (CobaltStrike, Counter-Strike)
+            cmd = ["java", "-XX:ParallelGCThreads=4", "-XX:+AggressiveHeap",
+                   "-jar", str(jar_path), teamserver_host, password]
+            if extra_args:
+                cmd.extend(extra_args.split())
+        else:
+            # EXE C2 (dogcs, xiebro)
+            cmd = [str(jar_path), f"--host={teamserver_host}", f"--port={teamserver_port}"]
+            if password:
+                cmd.append(f"--password={password}")
+            if extra_args:
+                cmd.extend(extra_args.split())
+
+        subprocess.Popen(cmd, creationflags=subprocess.CREATE_NEW_CONSOLE)
+        return True, f"已启动 {c2_name}，TeamServer: {teamserver_host}:{teamserver_port}"
+    except Exception as e:
+        return False, f"启动失败: {e}"
+
+
+def list_c2():
+    """列出可用的 C2 框架"""
+    result = []
+    for name, path in C2_FRAMEWORKS.items():
+        result.append({
+            "name": name,
+            "path": str(path),
+            "exists": path.exists(),
+        })
+    return result
 
 
 if __name__ == "__main__":

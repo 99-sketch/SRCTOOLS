@@ -566,6 +566,15 @@ class EduSrcGUI:
         ttk.Separator(toolbar, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(toolbar, text="🛠 生成Webshell", command=self._ws_generate).pack(side="left", padx=2)
         ttk.Button(toolbar, text="📂 打开Webshell目录", command=self._ws_open_dir).pack(side="left", padx=2)
+        ttk.Separator(toolbar, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Button(toolbar, text="🎯 C2框架", command=self._ws_c2_launch).pack(side="left", padx=2)
+
+        # C2 状态栏
+        c2_frame = ttk.Frame(tab)
+        c2_frame.pack(fill="x", padx=4)
+        ttk.Label(c2_frame, text="C2:", foreground="#888").pack(side="left", padx=4)
+        self.c2_status = ttk.Label(c2_frame, text="未启动", foreground="#666")
+        self.c2_status.pack(side="left", padx=4)
 
         # 连接列表
         list_frame = ttk.Frame(tab)
@@ -789,6 +798,71 @@ class EduSrcGUI:
         ws_dir = OUTPUTS_DIR / "webshells"
         ws_dir.mkdir(parents=True, exist_ok=True)
         os.startfile(str(ws_dir))
+
+    def _ws_c2_launch(self):
+        """启动 C2 框架"""
+        from src.webshell.manager import list_c2, launch_c2
+
+        dlg = tk.Toplevel(self.root)
+        dlg.title("启动 C2 框架")
+        dlg.geometry("500x400")
+        dlg.transient(self.root)
+        dlg.grab_set()
+
+        ttk.Label(dlg, text="选择 C2 框架:", font=("Microsoft YaHei UI", 10, "bold")).pack(pady=10)
+
+        # C2 列表
+        c2_list = list_c2()
+        c2_var = tk.StringVar()
+
+        list_frame = ttk.Frame(dlg)
+        list_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        for c2 in c2_list:
+            status = "✅" if c2["exists"] else "❌"
+            text = f"{status} {c2['name']}"
+            rb = ttk.Radiobutton(list_frame, text=text, variable=c2_var, value=c2["name"])
+            rb.pack(anchor="w", pady=2)
+            if c2["exists"] and not c2_var.get():
+                c2_var.set(c2["name"])
+
+        ttk.Label(dlg, text="TeamServer 配置:").pack(anchor="w", padx=20, pady=(10,0))
+
+        config_frame = ttk.Frame(dlg)
+        config_frame.pack(fill="x", padx=20, pady=5)
+
+        ttk.Label(config_frame, text="监听地址:").grid(row=0, column=0, sticky="e", padx=4)
+        host_var = tk.StringVar(value="0.0.0.0")
+        ttk.Entry(config_frame, textvariable=host_var, width=20).grid(row=0, column=1, padx=4)
+
+        ttk.Label(config_frame, text="端口:").grid(row=0, column=2, sticky="e", padx=4)
+        port_var = tk.StringVar(value="50050")
+        ttk.Entry(config_frame, textvariable=port_var, width=10).grid(row=0, column=3, padx=4)
+
+        ttk.Label(config_frame, text="密码:").grid(row=1, column=0, sticky="e", padx=4, pady=4)
+        pass_var = tk.StringVar(value="123456")
+        ttk.Entry(config_frame, textvariable=pass_var, width=20, show="*").grid(row=1, column=1, padx=4, pady=4)
+
+        def launch():
+            c2_name = c2_var.get()
+            if not c2_name:
+                messagebox.showerror("错误", "请选择 C2 框架")
+                return
+            ok, msg = launch_c2(
+                c2_name,
+                teamserver_host=host_var.get(),
+                teamserver_port=int(port_var.get()),
+                password=pass_var.get()
+            )
+            if ok:
+                self.c2_status.config(text=f"{c2_name} 已启动", foreground="#7ee787")
+                self._append_log(f"[C2] {msg}", "ok")
+                messagebox.showinfo("成功", msg)
+            else:
+                messagebox.showerror("启动失败", msg)
+            dlg.destroy()
+
+        ttk.Button(dlg, text="🚀 启动", command=launch).pack(pady=20)
 
     # ---------------- 交互逻辑 ----------------
     def _append_log(self, msg, kind="info"):

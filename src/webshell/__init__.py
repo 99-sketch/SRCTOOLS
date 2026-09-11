@@ -7,6 +7,9 @@ from src.webshell.manager import (
     default_manager,
     MANAGERS,
     SHELL_TYPE_MAP,
+    C2_FRAMEWORKS,
+    launch_c2,
+    list_c2,
 )
 
 __all__ = [
@@ -15,4 +18,7 @@ __all__ = [
     "default_manager",
     "MANAGERS",
     "SHELL_TYPE_MAP",
+    "C2_FRAMEWORKS",
+    "launch_c2",
+    "list_c2",
 ]
