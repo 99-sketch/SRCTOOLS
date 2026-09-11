@@ -4,7 +4,7 @@
 
 from pathlib import Path
 
-PROJECT_ROOT = Path(r"e:\trae自动化\edu-src-toolkit")
+PROJECT_ROOT = Path(r"D:\SRC执行器")
 
 a = Analysis(
     [str(PROJECT_ROOT / "gui_app.py")],
@@ -21,6 +21,8 @@ a = Analysis(
         "src.selector",
         "src.recon.asset_collector",
         "src.recon.prober",
+        "src.recon.tooling",
+        "src.recon.redteam_tools",
         "src.vuln.engine",
         "src.vuln.evidence",
         "src.vuln.nday_verify",

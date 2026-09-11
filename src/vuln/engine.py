@@ -243,6 +243,21 @@ def run_vuln_engine(alive_results, school_code, do_sensitive=True,
         except Exception as e:
             _out(f"    外部扫描器阶段异常（不影响内置结果）: {e}")
 
+    # ---------- 5.5 红队工具集成（Gr33k/enscan/Railgun/Aazhen/weekpasswd）----------
+    if alive_results and not (stop_flag and stop_flag.is_set()):
+        _out("[*] 红队工具集成（Gr33k CVE利用/enscan企业信息/Railgun收集/Aazhen扫描/弱口令爆破）")
+        from src.recon.redteam_tools import run_all_redteam_tools
+        try:
+            rt = run_all_redteam_tools(alive_results, school_code,
+                                       stop_flag=stop_flag, emit=emit)
+            known = {(f.get("url", ""), f.get("type", "")) for f in findings}
+            for f in rt:
+                if (f.get("url", ""), f.get("type", "")) not in known:
+                    findings.append(f)
+            _out(f"    红队工具确认 {len(rt)} 条，累计 {len(findings)} 条")
+        except Exception as e:
+            _out(f"    红队工具阶段异常（不影响内置结果）: {e}")
+
     # ---------- 6. 保存 ----------
     findings_path = out_dir / "findings.json"
     with open(findings_path, "w", encoding="utf-8") as f:
@@ -258,6 +273,7 @@ def run_vuln_engine(alive_results, school_code, do_sensitive=True,
                        "active_injected": _count_source(findings, "active-exploit"),
                        "nday_feature": _count_source(findings, "nday-active-verify"),
                        "external_scanner": _count_source_any(findings, "external-"),
+                       "redteam_tools": _count_source_any(findings, "external-gr33k") + _count_source_any(findings, "external-enscan") + _count_source_any(findings, "external-railgun") + _count_source_any(findings, "external-aazhen") + _count_source_any(findings, "external-weekpasswd"),
                        "attack_entries": len(attack_log),
                    }},
                   f, ensure_ascii=False, indent=2)

@@ -36,6 +36,11 @@ def _src_cn(src):
         "external-nuclei": "nuclei模板扫描(自动)",
         "external-afrog": "afrog漏洞扫描(自动)",
         "external-xray": "xray综合扫描(自动)",
+        "external-gr33k": "Gr33k CVE利用(自动)",
+        "external-enscan": "enscan企业信息(自动)",
+        "external-railgun": "Railgun自动化收集(自动)",
+        "external-aazhen": "Aazhen综合扫描(自动)",
+        "external-weekpasswd": "weekpasswd弱口令(自动)",
     }.get(src, "证据链探测")
 
 
@@ -89,10 +94,16 @@ def build_report(school, alive_results, findings, nday_candidates, reverify_out=
     n_nuc = sum(1 for r in confirmed if r.get("source") == "external-nuclei")
     n_afr = sum(1 for r in confirmed if r.get("source") == "external-afrog")
     n_xry = sum(1 for r in confirmed if r.get("source") == "external-xray")
+    n_gr3 = sum(1 for r in confirmed if r.get("source") == "external-gr33k")
+    n_ens = sum(1 for r in confirmed if r.get("source") == "external-enscan")
+    n_rgl = sum(1 for r in confirmed if r.get("source") == "external-railgun")
+    n_aaz = sum(1 for r in confirmed if r.get("source") == "external-aazhen")
+    n_wkp = sum(1 for r in confirmed if r.get("source") == "external-weekpasswd")
     n_act = sum(1 for r in confirmed if r.get("source") == "active-exploit")
     n_sen = sum(1 for r in confirmed if r.get("source") == "sensitive-disclosure")
     n_ndv = sum(1 for r in confirmed if r.get("source") == "nday-active-verify")
     n_ext = n_nuc + n_afr + n_xry
+    n_rt = n_gr3 + n_ens + n_rgl + n_aaz + n_wkp  # 红队工具
 
     L = []
     def _h(txt):
@@ -117,6 +128,10 @@ def build_report(school, alive_results, findings, nday_candidates, reverify_out=
     _h(f"| **100%确认漏洞** | **{len(confirmed)}** |")
     _h(f"| 高/中危 | {sev_count.get('高',0)} 高 / {sev_count.get('中',0)} 中 |")
     _h(f"| Nday线索(待人工) | {len(nday_candidates)} |")
+    if n_ext > 0:
+        _h(f"| 外部扫描器 | nuclei {n_nuc} / afrog {n_afr} / xray {n_xry} |")
+    if n_rt > 0:
+        _h(f"| 红队工具 | Gr33k {n_gr3} / enscan {n_ens} / Railgun {n_rgl} / Aazhen {n_aaz} / weekpasswd {n_wkp} |")
     if reverify_out:
         rv = reverify_out.get("summary", {})
         _h(f"| 复测结论 | 确认{rv.get('confirmed',0)} / 误报{rv.get('false_positive',0)} / 不可达{rv.get('unreachable',0)} |")
