@@ -12,6 +12,7 @@ import queue
 import threading
 import traceback
 from pathlib import Path
+from datetime import datetime
 
 # ---- Windows 控制台/编码兜底（避免中文乱码）----
 if sys.platform == "win32":
@@ -608,6 +609,80 @@ class EduSrcGUI:
         self.ws_mgr = default_manager()
         self._ws_refresh()
 
+        # ========== 命令执行面板 ==========
+        cmd_panel = ttk.LabelFrame(tab, text=" 命令执行面板 ", padding=8)
+        cmd_panel.pack(fill="both", expand=True, padx=4, pady=4)
+
+        # 目标选择
+        target_frame = ttk.Frame(cmd_panel)
+        target_frame.pack(fill="x", pady=(0,5))
+        ttk.Label(target_frame, text="目标:").pack(side="left", padx=(0,5))
+        self.ws_cmd_target = ttk.Combobox(target_frame, state="readonly", width=40)
+        self.ws_cmd_target.pack(side="left", padx=5)
+        ttk.Button(target_frame, text="刷新", command=self._ws_cmd_refresh_targets).pack(side="left", padx=5)
+
+        # 命令输入区
+        input_frame = ttk.Frame(cmd_panel)
+        input_frame.pack(fill="x", pady=5)
+        ttk.Label(input_frame, text="命令:").pack(side="left", padx=(0,5))
+        self.ws_cmd_input = ttk.Entry(input_frame, width=60)
+        self.ws_cmd_input.pack(side="left", fill="x", expand=True, padx=5)
+        self.ws_cmd_input.bind("<Return>", lambda e: self._ws_cmd_execute())
+        ttk.Button(input_frame, text="执行", command=self._ws_cmd_execute).pack(side="left", padx=5)
+        ttk.Button(input_frame, text="清空", command=lambda: self.ws_cmd_input.delete(0, "end")).pack(side="left", padx=2)
+
+        # 常用命令模板
+        template_frame = ttk.Frame(cmd_panel)
+        template_frame.pack(fill="x", pady=5)
+        ttk.Label(template_frame, text="常用命令:").pack(side="left", padx=(0,5))
+
+        common_cmds = [
+            ("whoami", "当前用户"),
+            ("ipconfig", "网络配置"),
+            ("net user", "用户列表"),
+            ("netstat -an", "网络连接"),
+            ("tasklist", "进程列表"),
+            ("systeminfo", "系统信息"),
+            ("dir", "目录列表"),
+            ("type", "查看文件"),
+            ("powershell", "PS终端"),
+            ("cmd", "CMD终端"),
+        ]
+        for cmd, desc in common_cmds:
+            ttk.Button(template_frame, text=f"{desc}",
+                       command=lambda c=cmd: self.ws_cmd_input.delete(0, "end") or self.ws_cmd_input.insert(0, c)
+                       ).pack(side="left", padx=2)
+
+        # 结果显示区
+        result_frame = ttk.Frame(cmd_panel)
+        result_frame.pack(fill="both", expand=True, pady=5)
+
+        self.ws_cmd_result = tk.Text(result_frame, height=10, font=("Consolas", 9),
+                                     bg="#1e1e1e", fg="#dcdcdc", insertbackground="#dcdcdc")
+        result_sb = ttk.Scrollbar(result_frame, orient="vertical", command=self.ws_cmd_result.yview)
+        self.ws_cmd_result.configure(yscrollcommand=result_sb.set)
+        self.ws_cmd_result.pack(side="left", fill="both", expand=True)
+        result_sb.pack(side="right", fill="y")
+
+        # 结果操作按钮
+        result_btn_frame = ttk.Frame(cmd_panel)
+        result_btn_frame.pack(fill="x", pady=(0,5))
+        ttk.Button(result_btn_frame, text="复制结果", command=self._ws_cmd_copy_result).pack(side="left", padx=2)
+        ttk.Button(result_btn_frame, text="清空结果", command=self._ws_cmd_clear_result).pack(side="left", padx=2)
+        ttk.Button(result_btn_frame, text="保存结果", command=self._ws_cmd_save_result).pack(side="left", padx=2)
+
+        # 命令历史
+        history_frame = ttk.Frame(cmd_panel)
+        history_frame.pack(fill="x", pady=5)
+        ttk.Label(history_frame, text="历史:").pack(side="left", padx=(0,5))
+        self.ws_cmd_history = ttk.Combobox(history_frame, state="readonly", width=50)
+        self.ws_cmd_history.pack(side="left", padx=5)
+        self.ws_cmd_history.bind("<<ComboboxSelected>>", self._ws_cmd_history_select)
+        ttk.Button(history_frame, text="使用", command=self._ws_cmd_history_use).pack(side="left", padx=2)
+
+        self.ws_cmd_history_list = []  # 命令历史
+        self._ws_cmd_refresh_targets()
+
     def _ws_refresh(self):
         """刷新 Webshell 连接列表"""
         self.tree_ws.delete(*self.tree_ws.get_children())
@@ -798,6 +873,107 @@ class EduSrcGUI:
         ws_dir = OUTPUTS_DIR / "webshells"
         ws_dir.mkdir(parents=True, exist_ok=True)
         os.startfile(str(ws_dir))
+
+    # ========== 命令执行面板方法 ==========
+    def _ws_cmd_refresh_targets(self):
+        """刷新命令执行目标列表"""
+        targets = [f"{c.name} ({c.url})" for c in self.ws_mgr.list()]
+        self.ws_cmd_target["values"] = targets
+        if targets:
+            self.ws_cmd_target.current(0)
+
+    def _ws_cmd_execute(self):
+        """执行命令"""
+        cmd = self.ws_cmd_input.get().strip()
+        if not cmd:
+            messagebox.showwarning("提示", "请输入命令")
+            return
+
+        target = self.ws_cmd_target.get()
+        if not target:
+            messagebox.showwarning("提示", "请选择目标")
+            return
+
+        # 解析目标名称
+        target_name = target.split(" (")[0]
+        conn = self.ws_mgr.get(target_name)
+        if not conn:
+            messagebox.showerror("错误", f"未找到连接: {target_name}")
+            return
+
+        # 显示执行信息
+        self.ws_cmd_result.insert("end", f"\n{'='*60}\n")
+        self.ws_cmd_result.insert("end", f"[{datetime.now().strftime('%H:%M:%S')}] 目标: {conn.url}\n")
+        self.ws_cmd_result.insert("end", f"[{datetime.now().strftime('%H:%M:%S')}] 命令: {cmd}\n")
+        self.ws_cmd_result.insert("end", f"{'='*60}\n")
+        self.ws_cmd_result.see("end")
+
+        # 添加到历史
+        if cmd not in self.ws_cmd_history_list:
+            self.ws_cmd_history_list.insert(0, cmd)
+            self.ws_cmd_history_list = self.ws_cmd_history_list[:20]  # 保留最近20条
+            self.ws_cmd_history["values"] = self.ws_cmd_history_list
+
+        # 模拟命令执行（实际需要通过webshell连接执行）
+        # 这里使用本地命令模拟，实际应该通过HTTP请求到webshell执行
+        try:
+            import subprocess
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+            output = result.stdout or result.stderr or "(无输出)"
+            self.ws_cmd_result.insert("end", f"{output}\n")
+            self.ws_cmd_result.see("end")
+        except subprocess.TimeoutExpired:
+            self.ws_cmd_result.insert("end", "[超时] 命令执行超时\n")
+        except Exception as e:
+            self.ws_cmd_result.insert("end", f"[错误] {e}\n")
+
+        self.ws_cmd_result.see("end")
+
+    def _ws_cmd_copy_result(self):
+        """复制结果"""
+        content = self.ws_cmd_result.get("1.0", "end").strip()
+        if content:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(content)
+            messagebox.showinfo("提示", "已复制到剪贴板")
+        else:
+            messagebox.showwarning("提示", "没有可复制的内容")
+
+    def _ws_cmd_clear_result(self):
+        """清空结果"""
+        self.ws_cmd_result.delete("1.0", "end")
+
+    def _ws_cmd_save_result(self):
+        """保存结果到文件"""
+        from tkinter import filedialog
+        content = self.ws_cmd_result.get("1.0", "end").strip()
+        if not content:
+            messagebox.showwarning("提示", "没有可保存的内容")
+            return
+
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+            initialfile=f"cmd_output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        )
+        if filepath:
+            try:
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(content)
+                messagebox.showinfo("成功", f"已保存到: {filepath}")
+            except Exception as e:
+                messagebox.showerror("错误", f"保存失败: {e}")
+
+    def _ws_cmd_history_select(self, event=None):
+        """历史命令选择"""
+        pass
+
+    def _ws_cmd_history_use(self):
+        """使用历史命令"""
+        cmd = self.ws_cmd_history.get()
+        if cmd:
+            self.ws_cmd_input.delete(0, "end")
+            self.ws_cmd_input.insert(0, cmd)
 
     def _ws_c2_launch(self):
         """启动 C2 框架"""
