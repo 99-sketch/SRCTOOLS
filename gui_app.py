@@ -805,53 +805,94 @@ class EduSrcGUI:
 
         dlg = tk.Toplevel(self.root)
         dlg.title("启动 C2 框架")
-        dlg.geometry("500x400")
+        dlg.geometry("500x520")
         dlg.transient(self.root)
         dlg.grab_set()
 
-        ttk.Label(dlg, text="选择 C2 框架:", font=("Microsoft YaHei UI", 10, "bold")).pack(pady=10)
+        # 标题
+        ttk.Label(dlg, text="选择 C2 框架:", font=("Microsoft YaHei UI", 10, "bold")).pack(pady=(10,5))
 
-        # C2 列表
+        # C2 列表（带滚动条）
+        list_frame = ttk.Frame(dlg)
+        list_frame.pack(fill="both", expand=False, padx=20, pady=5)
+
         c2_list = list_c2()
         c2_var = tk.StringVar()
 
-        list_frame = ttk.Frame(dlg)
-        list_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        # 使用 Canvas + Scrollbar 实现可滚动列表
+        canvas = tk.Canvas(list_frame, height=150, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=canvas.yview)
+        scroll_frame = ttk.Frame(canvas)
 
+        scroll_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # 添加 C2 选项
         for c2 in c2_list:
             status = "✅" if c2["exists"] else "❌"
             text = f"{status} {c2['name']}"
-            rb = ttk.Radiobutton(list_frame, text=text, variable=c2_var, value=c2["name"])
-            rb.pack(anchor="w", pady=2)
+            rb = ttk.Radiobutton(scroll_frame, text=text, variable=c2_var, value=c2["name"])
+            rb.pack(anchor="w", pady=3, padx=10)
             if c2["exists"] and not c2_var.get():
                 c2_var.set(c2["name"])
 
-        ttk.Label(dlg, text="TeamServer 配置:").pack(anchor="w", padx=20, pady=(10,0))
+        # 分隔线
+        ttk.Separator(dlg, orient="horizontal").pack(fill="x", padx=20, pady=10)
+
+        # TeamServer 配置
+        ttk.Label(dlg, text="TeamServer 配置:", font=("Microsoft YaHei UI", 10, "bold")).pack(anchor="w", padx=20, pady=(5,5))
 
         config_frame = ttk.Frame(dlg)
         config_frame.pack(fill="x", padx=20, pady=5)
 
-        ttk.Label(config_frame, text="监听地址:").grid(row=0, column=0, sticky="e", padx=4)
+        # 第一行：监听地址 + 端口
+        ttk.Label(config_frame, text="监听地址:").grid(row=0, column=0, sticky="e", padx=(0,8), pady=4)
         host_var = tk.StringVar(value="0.0.0.0")
-        ttk.Entry(config_frame, textvariable=host_var, width=20).grid(row=0, column=1, padx=4)
+        ttk.Entry(config_frame, textvariable=host_var, width=20).grid(row=0, column=1, sticky="w", pady=4)
 
-        ttk.Label(config_frame, text="端口:").grid(row=0, column=2, sticky="e", padx=4)
+        ttk.Label(config_frame, text="端口:").grid(row=0, column=2, sticky="e", padx=(20,8), pady=4)
         port_var = tk.StringVar(value="50050")
-        ttk.Entry(config_frame, textvariable=port_var, width=10).grid(row=0, column=3, padx=4)
+        ttk.Entry(config_frame, textvariable=port_var, width=10).grid(row=0, column=3, sticky="w", pady=4)
 
-        ttk.Label(config_frame, text="密码:").grid(row=1, column=0, sticky="e", padx=4, pady=4)
+        # 第二行：密码
+        ttk.Label(config_frame, text="密码:").grid(row=1, column=0, sticky="e", padx=(0,8), pady=4)
         pass_var = tk.StringVar(value="123456")
-        ttk.Entry(config_frame, textvariable=pass_var, width=20, show="*").grid(row=1, column=1, padx=4, pady=4)
+        ttk.Entry(config_frame, textvariable=pass_var, width=20, show="*").grid(row=1, column=1, sticky="w", pady=4)
+
+        # 提示信息
+        ttk.Label(dlg, text="提示: CobaltStrike 默认端口 50050，密码至少 6 位",
+                  foreground="#888", font=("Microsoft YaHei UI", 8)).pack(anchor="w", padx=20, pady=(5,0))
 
         def launch():
             c2_name = c2_var.get()
             if not c2_name:
                 messagebox.showerror("错误", "请选择 C2 框架")
                 return
+            # 端口验证
+            try:
+                port = int(port_var.get())
+                if port < 1 or port > 65535:
+                    raise ValueError
+            except ValueError:
+                messagebox.showerror("错误", "端口必须是 1-65535 之间的整数")
+                return
+            # 密码验证（CS 要求至少 6 位）
+            if c2_name in ("cobaltstrike", "cobaltstrike_client") and len(pass_var.get()) < 6:
+                messagebox.showerror("错误", "CobaltStrike 密码至少需要 6 位")
+                return
+
             ok, msg = launch_c2(
                 c2_name,
                 teamserver_host=host_var.get(),
-                teamserver_port=int(port_var.get()),
+                teamserver_port=port,
                 password=pass_var.get()
             )
             if ok:
@@ -862,7 +903,7 @@ class EduSrcGUI:
                 messagebox.showerror("启动失败", msg)
             dlg.destroy()
 
-        ttk.Button(dlg, text="🚀 启动", command=launch).pack(pady=20)
+        ttk.Button(dlg, text="🚀 启动 TeamServer", command=launch).pack(pady=15)
 
     # ---------------- 交互逻辑 ----------------
     def _append_log(self, msg, kind="info"):
